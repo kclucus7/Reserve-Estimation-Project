@@ -7,8 +7,7 @@ def gen_payment_lags(claim_sizes, claims_number):
     # Log-transforming the sizes ensures smooth transitions between the means 
     # sds as they grow extremely large and we can scale a linear model
     log_sizes = np.log(claim_sizes)
-    
-    """""   
+     
     # Calibrating Mu: 
     # Fits a smooth progression passing close to your targets:
     # ln(75) -> ~2.1, ln(1000) -> ~2.9, ln(15000) -> ~3.8
@@ -29,8 +28,8 @@ def gen_payment_lags(claim_sizes, claims_number):
     # 3. Vectorized Simulation Run
     # numpy handles arrays for both parameters seamlessly, ensuring every claim 
     # gets its own custom probability curve based on its precise cost.
-    payment_lags_raw = np.random.lognormal(mean=mus, sigma=sigmas)
-    """
+    payment_lags = np.random.lognormal(mean=mus, sigma=sigmas)
+    
     return payment_lags
 
 
