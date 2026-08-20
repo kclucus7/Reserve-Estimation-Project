@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+from gen_payment_lags import gen_payment_lags
 
 
 # set seed for study replication and establish number of claims
@@ -23,38 +24,45 @@ for i in range(1, claims_number + 1):
 # print(len([amt for amt in claim_sizes if amt>1000])/claims_number)
 # print(len([amt for amt in claim_sizes if amt>10000])/claims_number)
 # Cap the claim sizes between 10 and 200000 to avoid outliers 
-claim_sizes = np.random.lognormal(5.8, 1.5, claims_number)
+claim_sizes = np.random.lognormal(mean=5.8, sigma=1.5, size=claims_number).round(2)
 claim_sizes = np.clip(claim_sizes, 10.0, 100000.0)
 
 
 
-# # 3. Simulate processing lag (days between doctor visit and insurance payout)
-# # Real insurance lag is heavily skewed: most claims pay fast, a few take a long time.
-# # We use a Gamma distribution to realistically model this operational bottleneck.
-# processing_lag_days = np.random.gamma(shape=2.0, scale=25.0, size=num_claims).astype(int)
-# processing_lag_days = np.clip(processing_lag_days, 1, 360) # Keep lag between 1 day and 1 year
+# Simulate reporting lag (days between the HCP visit occurring and the 
+# report being submitted to insurance provider)
+# Real insurance lag is heavily skewed, ie most are reported fast, a few take 
+# a long time, we can model the lag with an exponential distribution, with mean
+# of 5 days as a typical report lag is between 3-7 days
+# clip report days at 180 as certain states require reporting by this threshold
+report_lags = np.random.exponential(scale=5.0, size=claims_number).round().astype(int)
+report_lags = np.clip(report_lags, 1, 180)
 
-# # 4. Calculate Paid Dates based on the lag
-# paid_dates = [inc + timedelta(days=int(lag)) for inc, lag in zip(incurred_dates, processing_lag_days)]
+# Simulate payment lags (days between the report being filed and the claim 
+# being paid out) using function
+payment_lags = gen_payment_lags(claim_sizes, claims_number)
 
-# # 5. Generate realistic Claim Amounts using a Log-Normal distribution
-# # Most health claims are small ($50-$150), but a few are massive hospitalizations.
-# claim_amounts = np.random.lognormal(mean=5.0, sigma=1.2, size=num_claims).round(2)
-# claim_amounts = np.clip(claim_amounts, 10.0, 50000.0) # Cap at a maximum of $50,000
+# Calculate Paid Dates based on the report and payment lags
+paid_dates = []
+for incdate, reportlag, paylag in zip(incurred_dates, report_lags, payment_lags): 
+    paid_dates.append(incdate + timedelta(int(reportlag) + int(paylag)))
 
-# # 6. Assemble into a structured DataFrame
-# df_claims = pd.DataFrame({
-#     'Claim_ID': np.arange(1, num_claims + 1),
-#     'Incurred_Date': incurred_dates,
-#     'Paid_Date': paid_dates,
-#     'Claim_Amount': claim_amounts
-# })
+# Put pieces into a structured DataFrame
+df_claims = pd.DataFrame({
+    'Claim_ID': np.arange(1, claims_number + 1),
+    'Incurred_Date': incurred_dates,
+    'Paid_Date': paid_dates,
+    'Claim_Amount': claim_sizes
+})
 
-# # 7. Inject an operational anomaly (Simulation Feature)
-# # Let's simulate a 2-month processor system outage in Nov/Dec 2024 where payouts lagged significantly
+
+# Save dataset to work with later
+df_claims.to_csv('health_claims_sample_dataset.csv', index=False)
+print(df_claims.head(20))
+
+# ADD THIS PART LATER WHEN I WORK ON CORRECTING FOR SHOCKS
+
+# Create an operational anomaly/shock to  (Simulation Feature)
+# Let's simulate a 2-month processor system outage in Nov/Dec 2024 where payouts lagged significantly
 # outage_mask = (df_claims['Incurred_Date'] >= datetime(2024, 11, 1)) & (df_claims['Incurred_Date'] <= datetime(2024, 12, 31))
 # df_claims.loc[outage_mask, 'Paid_Date'] = df_claims.loc[outage_mask, 'Paid_Date'] + timedelta(days=45)
-
-# # Save dataset to work with later
-# df_claims.to_csv('hypothetical_health_claims.csv', index=False)
-# print(df_claims.head(10))

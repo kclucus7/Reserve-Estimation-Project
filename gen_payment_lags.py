@@ -15,20 +15,26 @@ def gen_payment_lags(claim_sizes, claims_number):
 
     # Mu and Sigma values with parameters based on testing file
     mu_intercept = 0.62
-    mu_slope = 0.33
+    mu_slope = 0.3
     mus = mu_intercept + mu_slope*log_sizes
     sigma_intercept = -0.02
-    sigma_slope = 0.042
+    sigma_slope = 0.035
     sigmas = sigma_intercept + sigma_slope * log_sizes
 
     # Floor sigma slightly to prevent mathematically impossible zero/negative variance on tiny claims
     sigmas = np.maximum(0.10, sigmas)
+
 
     # Simulates payment lags according to a log-normal distribution with 
     # variable parameters depending on the claim size as calculated above. 
     # Log-normal dsitribution was chosen to cluster payment lags toward the 
     # short-term while maintaining a portion of longer payment lags in response 
     # to larger, more complicated claims
-    payment_lags = np.random.lognormal(mus, sigmas)
+    # Make data type integer to model whole day lags
+    payment_lags = np.random.lognormal(mus, sigmas, claims_number).round().astype(int)
+
+    # clip payment lags at 120 days no matter the claim size to account for 
+    # regulatory compliance
+    payment_lags = np.clip(payment_lags, None, 120)
     
     return payment_lags

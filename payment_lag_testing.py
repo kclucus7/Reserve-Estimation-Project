@@ -1,31 +1,20 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from gen_payment_lags import gen_payment_lags
 
-# paramters (to be changed to test the distribution of payment lags)
-mu_intercept = 0.62
-mu_slope = 0.3
-sigma_intercept = -0.02
-sigma_slope = 0.035
-
-#Claim sizes (distribution copied from dataset_creation file)
+# claim_sizes set up same as in dataset_creation file
+# create payment_lags using gen_payment_lag function
+# changing the mu_intercept, mu_slope, sigma_intercept, and sigma_slope 
+# paramters inside of the function file, checking against the graphs to make 
+# small changes to most accurately model the payment lag
 np.random.seed(42)
-claims_number = 20000
-claim_sizes = np.random.lognormal(5.8, 1.5, claims_number)
+claim_sizes = np.random.lognormal(mean=5.8, sigma=1.5, size=20000).round(2)
 claim_sizes = np.clip(claim_sizes, 10.0, 100000.0)
-
-# Generate payment lags from the claim sizes
-log_sizes = np.log(claim_sizes)
-mus = mu_intercept + mu_slope*log_sizes
-sigmas = np.maximum(0.1, sigma_intercept + sigma_slope*log_sizes)
-payment_lags = np.random.lognormal(mus, sigmas)
-
-# clip payment lags at 120 days no matter the claim size to account for 
-# regulatory compliance
-payment_lags = np.clip(payment_lags, None, 120)
+payment_lags = gen_payment_lags(claim_sizes)
 
 # Graph 1: checking the distribution of the payment lags
 plt.figure()
-plt.hist(payment_lags, 1000, density=True)
+plt.hist(payment_lags, 100, density=True)
 plt.xlabel("Payment Lag (days)")
 plt.ylabel("Density")
 plt.title("Payment Lag Distribution")
