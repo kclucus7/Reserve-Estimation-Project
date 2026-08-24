@@ -4,17 +4,17 @@ from datetime import datetime
 
 
 """
-    Builds a cumulative paid loss triangle (accident month x development
-    month) as of a given evaluation date.
+    Builds a cumulative paid loss triangle with accident months as rows and 
+    development months as columns as of a given evaluation date input.
 
-    eval_date can be a datetime object or a 'YYYY-MM-DD' string.
+    eval_date can be a datetime object or a string structured as 'YYYY-MM-DD'.
 
-    - Accident months that haven't started yet by eval_date are excluded.
-    - Claims not yet paid by eval_date contribute $0 (not yet observed).
-    - Cells beyond what's observable for a given accident month (the
-      staircase) are set to NaN, not 0 -- NaN means "unknown", 0 means
-      "known to be zero".
-    """
+    claims_df must be a pandas dataframe with at least fields: 
+    - 'Incurred Date'
+    - 'Paid Date'
+    - 'Claim Amount'
+"""
+
 def payment_triangle_at(claims_df, eval_date):
 
     # make the evaluation date into a datetime data type to make it easier 
@@ -49,7 +49,6 @@ def payment_triangle_at(claims_df, eval_date):
         (paid['Paid_Date'].dt.year - paid['Incurred_Date'].dt.year) * 12 +
         (paid['Paid_Date'].dt.month - paid['Incurred_Date'].dt.month))
 
-
     # Max observable development month for each accident month, as of eval_date
     # Keeps a record of every claim's max development (from incurred date to 
     # the evaluation date) so that triangle construction is more straigthforward
@@ -59,24 +58,43 @@ def payment_triangle_at(claims_df, eval_date):
         (eval_date.year - df['Incurred_Date'].dt.year) * 12 +
         (eval_date.month - df['Incurred_Date'].dt.month))
 
+    # Populating incremental paid amounts by (accident_month, dev_month):
+    # After bucketing all claims with the same accident and development month, 
+    # their claim amounts are summed so there's only 1 entry per 
+    # [accident month, development month] pair
+    incremental_payments = paid.groupby(['accident_month', 'dev_month'])['Claim_Amount'].sum()
 
+    # Break the multi-index series created above into a grid with rows of 
+    # accident months and columns of development month count
+    # If an accident_month - dev_month pair doesn't have any values, the entry
+    # is filled with 0
+    incremental_payments = incremental_payments.unstack(fill_value=0)
+
+    # Identify the unique accident months that occur in the data, and
+    # sort them chronologically
+    unique_accident_months = df['accident_month'].unique()
+    sorted_accident_months = sorted(unique_accident_months)
     
-
-    # Incremental paid amounts by (accident_month, dev_month)
-    incr = paid.groupby(['accident_month', 'dev_month'])['Claim_Amount'].sum().unstack(fill_value=0)
-
-    # Build the full grid: every accident month present, dev months 0..max
-    all_accident_months = sorted(df['accident_month'].unique())
+    
+    # Identify the longest development period possible from data
+    # Reindex the incremental payment matrix with accident months as rows and 
+    # development months sorted chrnonologically as columns 
+    # (with 0s in empty entries)
     max_dev = df['max_dev_month'].max()
-    incr = incr.reindex(index=all_accident_months, columns=range(0, max_dev + 1), fill_value=0)
+    incremental_payments = incremental_payments.reindex(index=sorted_accident_months, columns=range(0, max_dev + 1), fill_value=0)
 
-    # Cumulative sum across development months
-    cum = incr.cumsum(axis=1)
+    # Taking the cumulative sum across development months for all rows
+    cumulative_sums = incremental_payments.cumsum(axis=1)
 
-    # Mask cells beyond what's observable for each accident month
+    # Find the max development period for every accident month
     max_dev_by_row = df.groupby('accident_month')['max_dev_month'].first()
-    for am in cum.index:
-        limit = max_dev_by_row.loc[am]
-        cum.loc[am, cum.columns > limit] = np.nan
 
-    return cum
+    # For every accident month, make all entries that haven't been observed yet
+    # NaN (entries with dev_month larger than the respective max_dev_by_row)
+    for accident_month in cumulative_sums.index:
+        dev_limit = max_dev_by_row.loc[accident_month]
+        for dev_month in cumulative_sums.columns:
+            if dev_month > dev_limit:
+                cumulative_sums.loc[accident_month, dev_month] = np.nan
+
+    return cumulative_sums
