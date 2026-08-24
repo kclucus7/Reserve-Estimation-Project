@@ -40,22 +40,27 @@ def payment_triangle_at(claims_df, eval_date):
     # (rows of triangle)
     df['accident_month'] = df['Incurred_Date'].dt.to_period('M')
 
-
-
-    ## PICK UP FROM HERE## 
-    
-    # Max observable development month for each accident month, as of eval_date
-    df['max_dev_month'] = (
-        (eval_date.year - df['Incurred_Date'].dt.year) * 12 +
-        (eval_date.month - df['Incurred_Date'].dt.month)
-    )
-
-    # Only claims actually paid by eval_date contribute to paid amounts
+    # Filter entries to only include claims actually paid by eval_date
     paid = df[df['Paid_Date'] <= eval_date].copy()
+
+    # Add a new entry to each claim representing development month for placement
+    # in the triangle later
     paid['dev_month'] = (
         (paid['Paid_Date'].dt.year - paid['Incurred_Date'].dt.year) * 12 +
-        (paid['Paid_Date'].dt.month - paid['Incurred_Date'].dt.month)
-    )
+        (paid['Paid_Date'].dt.month - paid['Incurred_Date'].dt.month))
+
+
+    # Max observable development month for each accident month, as of eval_date
+    # Keeps a record of every claim's max development (from incurred date to 
+    # the evaluation date) so that triangle construction is more straigthforward
+    # with no confusion between NaN entries (development hasn't reached that 
+    # month) and cumulative months with maybe no additional payments
+    df['max_dev_month'] = (
+        (eval_date.year - df['Incurred_Date'].dt.year) * 12 +
+        (eval_date.month - df['Incurred_Date'].dt.month))
+
+
+    
 
     # Incremental paid amounts by (accident_month, dev_month)
     incr = paid.groupby(['accident_month', 'dev_month'])['Claim_Amount'].sum().unstack(fill_value=0)
