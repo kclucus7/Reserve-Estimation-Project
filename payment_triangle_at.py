@@ -7,12 +7,16 @@ from datetime import datetime
     Builds a cumulative paid loss triangle with accident months as rows and 
     development months as columns as of a given evaluation date input.
 
+    Inputs: 
     eval_date can be a datetime object or a string structured as 'YYYY-MM-DD'.
 
     claims_df must be a pandas dataframe with at least fields: 
     - 'Incurred Date'
     - 'Paid Date'
     - 'Claim Amount'
+
+    Output:
+    a pandas datframe with
 """
 
 def payment_triangle_at(claims_df, eval_date):
