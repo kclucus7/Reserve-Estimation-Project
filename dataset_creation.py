@@ -6,7 +6,7 @@ from gen_payment_lags import gen_payment_lags
 
 # set seed for study replication and establish number of claims
 np.random.seed(42)
-claims_number = 20000
+claims_number = 10000000
 
 # Generate random Incurred Dates over a 2-year window beginning January 1, 2024
 start_date = datetime(2024, 1, 1)
