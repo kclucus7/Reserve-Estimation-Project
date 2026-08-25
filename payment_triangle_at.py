@@ -16,7 +16,9 @@ from datetime import datetime
     - 'Claim Amount'
 
     Output:
-    a pandas datframe with
+    a pandas datframe representing a payment triangle with cumulative payments 
+    made from an Accident Month by development month periods until the 
+    evaluation date
 """
 
 def payment_triangle_at(claims_df, eval_date):
