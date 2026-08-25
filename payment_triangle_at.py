@@ -15,13 +15,16 @@ from datetime import datetime
     - 'Paid Date'
     - 'Claim Amount'
 
+    max_dev_month is an int representing a cap of the amount of development 
+    months, so we can shorten the analysis horizon
+
     Output:
     a pandas datframe representing a payment triangle with cumulative payments 
     made from an Accident Month by development month periods until the 
     evaluation date
 """
 
-def payment_triangle_at(claims_df, eval_date):
+def payment_triangle_at(claims_df, eval_date, max_dev_month=None):
 
     # make the evaluation date into a datetime data type to make it easier 
     # to work with
@@ -87,6 +90,8 @@ def payment_triangle_at(claims_df, eval_date):
     # development months sorted chrnonologically as columns 
     # (with 0s in empty entries)
     max_dev = df['max_dev_month'].max()
+    if max_dev_month is not None: 
+        max_dev = min(max_dev, max_dev_month)
     incremental_payments = incremental_payments.reindex(index=sorted_accident_months, columns=range(0, max_dev + 1), fill_value=0)
 
     # Taking the cumulative sum across development months for all rows
