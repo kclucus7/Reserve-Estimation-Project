@@ -59,10 +59,3 @@ df_claims = pd.DataFrame({
 # Save dataset to work with later
 df_claims.to_csv('health_claims_sample_dataset.csv', index=False)
 print(df_claims.head(20))
-
-# ADD THIS PART LATER WHEN I WORK ON CORRECTING FOR SHOCKS
-
-# Create an operational anomaly/shock to  (Simulation Feature)
-# Let's simulate a 2-month processor system outage in Nov/Dec 2024 where payouts lagged significantly
-# outage_mask = (df_claims['Incurred_Date'] >= datetime(2024, 11, 1)) & (df_claims['Incurred_Date'] <= datetime(2024, 12, 31))
-# df_claims.loc[outage_mask, 'Paid_Date'] = df_claims.loc[outage_mask, 'Paid_Date'] + timedelta(days=45)
